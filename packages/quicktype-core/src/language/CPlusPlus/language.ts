@@ -110,6 +110,11 @@ export const cPlusPlusOptions = {
         "Hide null value for optional field",
         false,
     ),
+    complete: new BooleanOption(
+        "complete",
+        "Generate complete self-contained files with all helper functions inline, instead of including NlohmannHelpers.h",
+        false,
+    ),
 };
 
 export const cPlusPlusLanguageConfig = {

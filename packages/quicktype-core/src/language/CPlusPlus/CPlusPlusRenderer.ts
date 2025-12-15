@@ -476,7 +476,7 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
         );
     }
 
-    protected startFile(basename: Sourcelike, includeHelper = true): void {
+    protected startFile(basename: Sourcelike): void {
         assert(
             this._currentFilename === undefined,
             "Previous file wasn't finished",
@@ -489,57 +489,27 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
             this.emitComments(this.leadingComments);
         } else if (!this._options.justTypes) {
             this.emitCommentLines([
-                " To parse this JSON data, first install",
+                "=============================================================================",
+                "    This is an auto-generated file. Do not edit!",
+                "    This file was generated using quicktype based on provided JSON schema files.",
+                "=============================================================================",
                 "",
             ]);
-            if (this._options.boost) {
-                this.emitCommentLines(["     Boost     http://www.boost.org"]);
-            }
-
-            this.emitCommentLines([
-                "     json.hpp  https://github.com/nlohmann/json",
-                "",
-                " Then include this file, and then do",
-                "",
-            ]);
-
-            if (this._options.typeSourceStyle) {
-                this.forEachTopLevel("none", (_, topLevelName) => {
-                    this.emitLine(
-                        "//     ",
-                        topLevelName,
-                        " data = nlohmann::json::parse(jsonString);",
-                    );
-                });
-            } else {
-                this.emitLine(
-                    "//     ",
-                    basename,
-                    " data = nlohmann::json::parse(jsonString);",
-                );
-            }
-
-            if (this._options.wstring) {
-                this.emitLine("//");
-                this.emitLine(
-                    "//  You can get std::wstring data back out using",
-                );
-                this.emitLine("//");
-                this.forEachTopLevel("none", (_, topLevelName) => {
-                    this.emitLine(
-                        "//     std::wcout << ",
-                        "wdump((nlohmann::json) ",
-                        topLevelName,
-                        ");",
-                    );
-                });
-            }
         }
 
         this.ensureBlankLine();
 
         this.emitLine("#pragma once");
         this.ensureBlankLine();
+
+        // Include NlohmannHelpers unless complete mode is enabled
+        if (!this._options.complete) {
+            this.emitInclude(false, "messages/common/NlohmannHelpers.h");
+            this.ensureBlankLine();
+        }
+
+        // Emit include for common header if needed
+        // (user can add this if they have common types)
 
         if (this.haveOptionalProperties) {
             if (this._options.boost) {
@@ -562,10 +532,6 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
                 this.emitInclude(true, "nlohmann/json.hpp");
             } else {
                 this.emitInclude(false, "json.hpp");
-            }
-
-            if (includeHelper && !this._options.typeSourceStyle) {
-                this.emitInclude(false, "helper.hpp");
             }
         }
 
@@ -2608,129 +2574,132 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
             this.ensureBlankLine();
         }
 
-        this.ensureBlankLine();
-
-        let untypedMacroName = "NLOHMANN_UNTYPED_";
-        let optionalMacroName = "NLOHMANN_OPTIONAL_";
-        this._namespaceNames.forEach((value) => {
-            // We can't use upper name, because namespaces are case sensitive
-            untypedMacroName += value;
-            untypedMacroName += "_";
-
-            optionalMacroName += value;
-            optionalMacroName += "_";
-        });
-
-        untypedMacroName += "HELPER";
-        optionalMacroName += "HELPER";
-
-        this.emitLine(`#ifndef ${untypedMacroName}`);
-        this.emitLine(`#define ${untypedMacroName}`);
-
-        this.emitBlock(
-            [
-                "inline json get_untyped(",
-                this.withConst("json"),
-                " & j, ",
-                this.withConst("char"),
-                " * property)",
-            ],
-            false,
-            () => {
-                this.emitBlock(
-                    ["if (j.find(property) != j.end())"],
-                    false,
-                    () => {
-                        this.emitLine("return j.at(property).get<json>();");
-                    },
-                );
-                this.emitLine("return json();");
-            },
-        );
-
-        this.ensureBlankLine();
-
-        this.emitBlock(
-            [
-                "inline json get_untyped(",
-                this.withConst("json"),
-                " & j, std::string property)",
-            ],
-            false,
-            () => {
-                this.emitLine("return get_untyped(j, property.data());");
-            },
-        );
-
-        this.emitLine("#endif");
-
-        this.ensureBlankLine();
-
-        if (this.haveUnions || this.haveOptionalProperties) {
+        // Only emit NLOHMANN helpers if complete mode is enabled
+        if (this._options.complete) {
             this.ensureBlankLine();
 
-            this.emitLine(`#ifndef ${optionalMacroName}`);
-            this.emitLine(`#define ${optionalMacroName}`);
+            let untypedMacroName = "NLOHMANN_UNTYPED_";
+            let optionalMacroName = "NLOHMANN_OPTIONAL_";
+            this._namespaceNames.forEach((value) => {
+                // We can't use upper name, because namespaces are case sensitive
+                untypedMacroName += value;
+                untypedMacroName += "_";
 
-            const emitGetOptional = (
-                optionalType: string,
-                label: string,
-            ): void => {
-                this.emitLine("template <typename T>");
-                this.emitBlock(
-                    [
-                        "inline ",
-                        optionalType,
-                        `<T> get_${label}_optional(`,
-                        this.withConst("json"),
-                        " & j, ",
-                        this.withConst("char"),
-                        " * property)",
-                    ],
-                    false,
-                    () => {
-                        this.emitLine(["auto it = j.find(property);"]);
-                        this.emitBlock(
-                            ["if (it != j.end() && !it->is_null())"],
-                            false,
-                            () => {
-                                this.emitLine(
-                                    "return j.at(property).get<",
-                                    optionalType,
-                                    "<T>>();",
-                                );
-                            },
-                        );
-                        this.emitLine("return ", optionalType, "<T>();");
-                    },
-                );
+                optionalMacroName += value;
+                optionalMacroName += "_";
+            });
 
-                this.ensureBlankLine();
+            untypedMacroName += "HELPER";
+            optionalMacroName += "HELPER";
 
-                this.emitLine("template <typename T>");
-                this.emitBlock(
-                    [
-                        "inline ",
-                        optionalType,
-                        `<T> get_${label}_optional(`,
-                        this.withConst("json"),
-                        " & j, std::string property)",
-                    ],
-                    false,
-                    () => {
-                        this.emitLine(
-                            `return get_${label}_optional<T>(j, property.data());`,
-                        );
-                    },
-                );
-            };
+            this.emitLine(`#ifndef ${untypedMacroName}`);
+            this.emitLine(`#define ${untypedMacroName}`);
 
-            emitGetOptional(this.optionalTypeHeap(), "heap");
-            emitGetOptional(this.optionalTypeStack(), "stack");
+            this.emitBlock(
+                [
+                    "inline json get_untyped(",
+                    this.withConst("json"),
+                    " & j, ",
+                    this.withConst("char"),
+                    " * property)",
+                ],
+                false,
+                () => {
+                    this.emitBlock(
+                        ["if (j.find(property) != j.end())"],
+                        false,
+                        () => {
+                            this.emitLine("return j.at(property).get<json>();");
+                        },
+                    );
+                    this.emitLine("return json();");
+                },
+            );
+
+            this.ensureBlankLine();
+
+            this.emitBlock(
+                [
+                    "inline json get_untyped(",
+                    this.withConst("json"),
+                    " & j, std::string property)",
+                ],
+                false,
+                () => {
+                    this.emitLine("return get_untyped(j, property.data());");
+                },
+            );
 
             this.emitLine("#endif");
 
             this.ensureBlankLine();
+
+            if (this.haveUnions || this.haveOptionalProperties) {
+                this.ensureBlankLine();
+
+                this.emitLine(`#ifndef ${optionalMacroName}`);
+                this.emitLine(`#define ${optionalMacroName}`);
+
+                const emitGetOptional = (
+                    optionalType: string,
+                    label: string,
+                ): void => {
+                    this.emitLine("template <typename T>");
+                    this.emitBlock(
+                        [
+                            "inline ",
+                            optionalType,
+                            `<T> get_${label}_optional(`,
+                            this.withConst("json"),
+                            " & j, ",
+                            this.withConst("char"),
+                            " * property)",
+                        ],
+                        false,
+                        () => {
+                            this.emitLine(["auto it = j.find(property);"]);
+                            this.emitBlock(
+                                ["if (it != j.end() && !it->is_null())"],
+                                false,
+                                () => {
+                                    this.emitLine(
+                                        "return j.at(property).get<",
+                                        optionalType,
+                                        "<T>>();",
+                                    );
+                                },
+                            );
+                            this.emitLine("return ", optionalType, "<T>();");
+                        },
+                    );
+
+                    this.ensureBlankLine();
+
+                    this.emitLine("template <typename T>");
+                    this.emitBlock(
+                        [
+                            "inline ",
+                            optionalType,
+                            `<T> get_${label}_optional(`,
+                            this.withConst("json"),
+                            " & j, std::string property)",
+                        ],
+                        false,
+                        () => {
+                            this.emitLine(
+                                `return get_${label}_optional<T>(j, property.data());`,
+                            );
+                        },
+                    );
+                };
+
+                emitGetOptional(this.optionalTypeHeap(), "heap");
+                emitGetOptional(this.optionalTypeStack(), "stack");
+
+                this.emitLine("#endif");
+
+                this.ensureBlankLine();
+            }
         }
     }
 
@@ -2766,7 +2735,7 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
     }
 
     protected emitHelper(): void {
-        this.startFile("helper.hpp", false);
+        this.startFile("helper.hpp");
 
         this.emitExtraIncludes();
 
@@ -2778,7 +2747,7 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
             this.emitHelperFunctions();
         });
 
-        if (this.haveUnions || this.haveOptionalProperties) {
+        if (this._options.complete && (this.haveUnions || this.haveOptionalProperties)) {
             this.ensureBlankLine();
             this.emitOptionalHelpers();
         }
@@ -2927,19 +2896,15 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
         if (this._options.justTypes) {
             this.emitTypes();
         } else {
-            if (
-                !this._options.justTypes &&
-                this.haveNamedTypes &&
-                (this.haveUnions || this.haveOptionalProperties)
-            ) {
-                this.emitOptionalHelpers();
-                this.ensureBlankLine();
-            }
-
             this.emitNamespaces(this._namespaceNames, () => this.emitTypes());
         }
 
         this.ensureBlankLine();
+
+        if (this._options.complete && (this.haveUnions || this.haveOptionalProperties)) {
+            this.emitOptionalHelpers();
+            this.ensureBlankLine();
+        }
 
         this.emitGenerators();
 
@@ -3103,7 +3068,7 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
         defName: Name,
     ): void {
         const name = `${this.sourcelikeToString(defName)}.hpp`;
-        this.startFile(name, true);
+        this.startFile(name);
         this._generatedFiles.add(name);
 
         this.emitIncludes(d, this.sourcelikeToString(defName));
@@ -3129,7 +3094,7 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
         if (!this._options.justTypes && this.haveNamedTypes) {
             this.emitHelper();
 
-            this.startFile("Generators.hpp", true);
+            this.startFile("Generators.hpp");
 
             this._allTypeNames.forEach((t) => {
                 this.emitInclude(false, [t, ".hpp"]);
