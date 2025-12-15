@@ -102,8 +102,8 @@ function withRef<T extends object>(
         typeof refOrLoc === "function"
             ? refOrLoc()
             : refOrLoc instanceof Ref
-              ? refOrLoc
-              : refOrLoc.canonicalRef;
+                ? refOrLoc
+                : refOrLoc.canonicalRef;
     return Object.assign({ ref }, props ?? {});
 }
 
@@ -262,7 +262,7 @@ export class Ref {
     public get name(): string {
         const path = Array.from(this.path);
 
-        for (;;) {
+        for (; ;) {
             const e = path.pop();
             if (e === undefined || e.kind === PathElementKind.Root) {
                 let name =
@@ -499,7 +499,7 @@ class Canonizer {
 
     private readonly _schemaAddressesAdded = new Set<string>();
 
-    public constructor(private readonly _ctx: RunContext) {}
+    public constructor(private readonly _ctx: RunContext) { }
 
     private addIDs(schema: unknown, loc: Location): void {
         if (schema === null) return;
@@ -690,7 +690,7 @@ class Resolver {
         private readonly _ctx: RunContext,
         private readonly _store: JSONSchemaStore,
         private readonly _canonizer: Canonizer,
-    ) {}
+    ) { }
 
     private async tryResolveVirtualRef(
         fetchBase: Location,
@@ -702,7 +702,7 @@ class Resolver {
         // we don't know its $id mapping yet, which means we don't know where we
         // will end up.  What we do if we encounter a new schema is add all its
         // IDs first, and then try to canonize again.
-        for (;;) {
+        for (; ;) {
             const loc = this._canonizer.canonize(fetchBase, virtualRef);
             const canonical = loc.canonicalRef;
             assert(
@@ -715,9 +715,9 @@ class Resolver {
                 canonical.addressURI === undefined
                     ? undefined
                     : await this._store.get(
-                          address,
-                          this._ctx.debugPrintSchemaResolving,
-                      );
+                        address,
+                        this._ctx.debugPrintSchemaResolving,
+                    );
             if (schema === undefined) {
                 return [undefined, loc];
             }
@@ -985,7 +985,7 @@ async function addTypesInSchema(
                         ({ forType, forUnion, forCases }) => {
                             assert(
                                 forUnion === undefined &&
-                                    forCases === undefined,
+                                forCases === undefined,
                                 "We can't have attributes for unions and cases if we don't have a union",
                             );
                             return forType;

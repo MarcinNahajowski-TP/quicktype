@@ -780,8 +780,8 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
                 this.variantIndirection(
                     classType,
                     ctx.needsForwardIndirection &&
-                        this.isForwardDeclaredType(classType) &&
-                        !isOptional,
+                    this.isForwardDeclaredType(classType) &&
+                    !isOptional,
                     [
                         this.ourQualifier(inJsonNamespace),
                         this.nameForNamedType(classType),
@@ -1142,13 +1142,13 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
                 pattern === undefined
                     ? this._nulloptType
                     : [
-                          this._stringType.getType(),
-                          "(",
-                          this._stringType.createStringLiteral([
-                              stringEscape(pattern),
-                          ]),
-                          ")",
-                      ],
+                        this._stringType.getType(),
+                        "(",
+                        this._stringType.createStringLiteral([
+                            stringEscape(pattern),
+                        ]),
+                        ")",
+                    ],
                 ")",
             ]);
         });
@@ -1190,6 +1190,9 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
                 }
 
                 this.emitClassMembers(c, constraints);
+
+                this.ensureBlankLine();
+                this.emitLine("bool operator==(const ", className, "& other) const = default;");
             },
         );
     }
@@ -1633,17 +1636,20 @@ export class CPlusPlusRenderer extends ConvenienceRenderer {
         const caseNames: Sourcelike[] = [];
         const enumValues = enumCaseValues(e, this.targetLanguage.name);
 
-        this.forEachEnumCase(e, "none", (name, jsonName) => {
+        const sortedCases = Array.from(e.cases);
+
+        sortedCases.forEach((caseName) => {
             if (caseNames.length > 0) caseNames.push(", ");
-            caseNames.push(name);
+            caseNames.push(caseName);
 
             if (enumValues !== undefined) {
-                const [enumValue] = getAccessorName(enumValues, jsonName);
+                const [enumValue] = getAccessorName(enumValues, caseName);
                 if (enumValue !== undefined) {
                     caseNames.push(" = ", enumValue.toString());
                 }
             }
         });
+
         this.emitDescription(this.descriptionForType(e));
         this.emitLine(
             "enum class ",
